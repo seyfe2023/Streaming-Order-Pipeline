@@ -11,36 +11,30 @@ The goal of this project is to showcase a **production-style data pipeline archi
 ## Architecture Diagram
 
 ```mermaid
-flowchart TD
+flowchart LR
+    subgraph P[Producer]
+        A[Python] --> B[Kafka]
+    end
 
-subgraph Streaming
-A[Order Producer - Python]
-B[Kafka Topic: orders]
-end
+    subgraph C[Consumer]
+        B --> D[Python]
+    end
 
-subgraph Processing
-C[Kafka Consumer - Python]
-end
+    subgraph S[Storage]
+        D --> E[(Postgres)]
+    end
 
-subgraph Storage
-D[PostgreSQL staging_orders table]
-end
+    subgraph O[Orchestration]
+        E --> F[Airflow]
+    end
 
-subgraph Orchestration
-E[Airflow DAG: order_aggregation]
-end
+    subgraph T[Transform]
+        F --> G[dbt]
+    end
 
-subgraph Analytics
-F[order_metrics table]
-G[dbt models]
-end
-
-A --> B
-B --> C
-C --> D
-D --> E
-E --> F
-F --> G
+    subgraph AQ[Analytics]
+        G --> H[(Metrics)]
+    end
 ```
 
 ---
