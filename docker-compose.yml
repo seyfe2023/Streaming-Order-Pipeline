@@ -37,6 +37,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/streaming_db
       AIRFLOW__WEBSERVER__SECRET_KEY: "supersecretkey123"
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW_CONN_POSTGRES_DEFAULT: "postgresql://airflow:airflow@postgres:5432/streaming_db"
     volumes:
       - ./dags:/opt/airflow/dags
     command: >
@@ -56,6 +57,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/streaming_db
       AIRFLOW__WEBSERVER__SECRET_KEY: "supersecretkey123"
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW_CONN_POSTGRES_DEFAULT: "postgresql://airflow:airflow@postgres:5432/streaming_db"
     volumes:
       - ./dags:/opt/airflow/dags
     command: scheduler
