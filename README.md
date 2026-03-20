@@ -112,14 +112,11 @@ streaming-order-pipeline
 
    * Orders are stored in the `staging_orders` table.
 
-5. **Workflow Orchestration**
+5. **Data Transformation**
+   * dbt transforms raw data into analytics-ready tables (`order_metrics`).
 
-   * Airflow runs a DAG that aggregates orders.
-
-6. **Analytics Layer**
-
-   * dbt transforms the data into analytics-ready tables.
-
+6. **Workflow Orchestration**
+   * Airflow runs a DAG that updates the analytics table with latest data using `ON CONFLICT` logic.
 ---
 
 ## Run the Project
@@ -161,17 +158,38 @@ The consumer:
 
 ---
 
-### 4️⃣ Open Airflow
+### 4️⃣ Run dbt (One Time to Create Analytics Table)
+
+```bash
+cd dbt_project/streaming_orders
+dbt run
+```
+
+This creates the `analytics.order_metrics` table.
+
+---
+
+### 5️⃣ Add Primary Key (One Time)
+
+```bash
+docker exec -it postgres psql -U airflow -d streaming_db -c "ALTER TABLE analytics.order_metrics ADD PRIMARY KEY (order_date);"
+```
+
+This ensures Airflow's `ON CONFLICT` logic works correctly.
+
+---
+
+### 6️⃣ Open Airflow
 
 ```
 http://localhost:8082
 ```
 
-Login with the default Airflow credentials.
+Login with default credentials: `admin` / `admin`
 
 ---
 
-### 5️⃣ Trigger the DAG
+### 7️⃣ Trigger the DAG
 
 Run the DAG:
 
@@ -179,9 +197,7 @@ Run the DAG:
 order_aggregation
 ```
 
-This aggregates order data into analytics tables.
-
----
+This updates the analytics table with the latest order data using `ON CONFLICT`.
 
 ## Example Output
 
