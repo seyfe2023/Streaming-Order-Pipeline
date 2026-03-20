@@ -2,10 +2,10 @@ from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator # type: ignore
 from datetime import datetime
 
-# Define the DAG to run hourly starting from January 1, 2024
+# Define the DAG to run hourly starting from March 2, 2026
 with DAG(
     dag_id="order_aggregation",
-    start_date=datetime(2024, 1, 1),
+    start_date=datetime(2026, 3, 2),
     schedule_interval="@hourly",
     catchup=False
 ) as dag:
