@@ -3,7 +3,7 @@ from airflow.operators.bash import BashOperator
 from datetime import datetime
 import os
 
-# Define your actual project path
+# Define project path
 DBT_PROJECT_DIR = "/home/seyfe/streaming-order-pipeline/dbt_project/streaming_orders"
 DBT_PROFILES_DIR = "/home/seyfe/.dbt" 
 
