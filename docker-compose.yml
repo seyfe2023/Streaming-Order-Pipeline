@@ -25,8 +25,8 @@ services:
     ports:
       - "5434:5432"
 
-  airflow-webserver:  
-    image: apache/airflow:2.10.4
+  airflow-webserver:
+    build: . 
     container_name: airflow-webserver
     depends_on:
       - postgres
@@ -40,15 +40,18 @@ services:
       AIRFLOW_CONN_POSTGRES_DEFAULT: "postgresql://airflow:airflow@postgres:5432/streaming_db"
     volumes:
       - ./dags:/opt/airflow/dags
+      - /home/seyfe/streaming-order-pipeline/dbt_project:/opt/airflow/dbt_project
+      - /home/seyfe/.dbt:/opt/airflow/.dbt
     command: >
       bash -c "
+      pip install dbt-postgres &&
       airflow db init &&
       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
       airflow webserver
       "
 
   airflow-scheduler:
-    image: apache/airflow:2.10.4
+    build: .  
     container_name: airflow-scheduler
     depends_on:
       - airflow-webserver
@@ -60,4 +63,10 @@ services:
       AIRFLOW_CONN_POSTGRES_DEFAULT: "postgresql://airflow:airflow@postgres:5432/streaming_db"
     volumes:
       - ./dags:/opt/airflow/dags
-    command: scheduler
+      - /home/seyfe/streaming-order-pipeline/dbt_project:/opt/airflow/dbt_project
+      - /home/seyfe/.dbt:/opt/airflow/.dbt
+    command: >
+      bash -c "
+      pip install dbt-postgres &&
+      airflow scheduler
+      "

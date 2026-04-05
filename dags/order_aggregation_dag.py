@@ -1,31 +1,28 @@
 from airflow import DAG
-from airflow.providers.postgres.operators.postgres import PostgresOperator # type: ignore
+from airflow.operators.bash import BashOperator    
 from datetime import datetime
+import os
 
-# Define the DAG to run hourly starting from March 2, 2026
+# Define your actual project path
+DBT_PROJECT_DIR = "/home/seyfe/streaming-order-pipeline/dbt_project/streaming_orders"
+DBT_PROFILES_DIR = "/home/seyfe/.dbt" 
+
 with DAG(
-    dag_id="order_aggregation",
+    dag_id="order_aggregation_medallion",
     start_date=datetime(2026, 3, 2),
     schedule_interval="@hourly",
     catchup=False
 ) as dag:
 
-    # Calculate daily order totals and insert into analytics table
-    aggregate_orders = PostgresOperator(
-        task_id="aggregate_orders",
-        postgres_conn_id="postgres_default",
-        sql="""
-        INSERT INTO analytics.order_metrics (order_date, total_orders, revenue)
-        SELECT
-            DATE(created_at),
-            COUNT(*),
-            SUM(amount)
-        FROM staging_orders
-        GROUP BY DATE(created_at)
-
-        ON CONFLICT (order_date)
-        DO UPDATE SET
-            total_orders = EXCLUDED.total_orders,
-            revenue = EXCLUDED.revenue;
-        """
+    run_medallion_layers = BashOperator(
+        task_id="run_dbt_models",
+        bash_command=(
+            "cd /opt/airflow/dbt_project/streaming_orders && "
+            "/home/airflow/.local/bin/dbt run "
+            "--log-path /tmp/dbt_logs "
+            "--target-path /tmp/dbt_target"
+        ),
+        env={
+            'DBT_PROFILES_DIR': '/opt/airflow/.dbt' 
+        }
     )

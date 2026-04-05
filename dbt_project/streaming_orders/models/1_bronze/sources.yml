@@ -1,0 +1,7 @@
+version: 2
+
+sources:
+  - name: public
+    description: "Raw data ingested from Kafka by the Python consumer"
+    tables:
+      - name: staging_orders

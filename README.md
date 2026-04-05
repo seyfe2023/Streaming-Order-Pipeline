@@ -1,10 +1,8 @@
-# Real-Time Order Data Pipeline
+# Real-Time Order Data Pipeline (Medallion Architecture)
 
-This project demonstrates a **modern data engineering pipeline** for processing real-time order events using streaming technologies and workflow orchestration.
+This project demonstrates a modern data engineering pipeline for processing real-time order events using a Medallion Architecture (Bronze, Silver, Gold).
 
-The system simulates order events, streams them through Kafka, stores them in PostgreSQL, and aggregates them using Airflow and dbt to produce analytics-ready datasets.
-
-The goal of this project is to showcase a **production-style data pipeline architecture** including streaming ingestion, data storage, orchestration, and transformation.
+The system simulates order events, streams them through Kafka, stores them in PostgreSQL (Bronze), and transforms them using dbt (Silver/Gold) via Airflow orchestration to produce analytics-ready datasets.
 
 ---
 
@@ -12,28 +10,22 @@ The goal of this project is to showcase a **production-style data pipeline archi
 
 ```mermaid
 flowchart LR
-    subgraph P[Producer]
-        A[Python] --> B[Kafka]
+    subgraph P[Source]
+        A[Python Producer] --> B[Kafka Topic: orders]
     end
 
-    subgraph C[Consumer]
-        B --> D[Python]
+    subgraph C[Ingestion - Bronze]
+        B --> D[Python Consumer]
+        D --> E[(Postgres: staging_orders)]
     end
 
-    subgraph S[Storage]
-        D --> E[(Postgres)]
+    subgraph T[Transformation - dbt]
+        E --> F[Silver: silver_orders]
+        F --> G[Gold: order_metrics]
     end
 
     subgraph O[Orchestration]
-        E --> F[Airflow]
-    end
-
-    subgraph T[Transform]
-        F --> G[dbt]
-    end
-
-    subgraph AQ[Analytics]
-        G --> H[(Metrics)]
+        H[Airflow] -- schedules/triggers --> T
     end
 ```
 
@@ -72,23 +64,20 @@ Main technologies used:
 ## Project Structure
 
 ```
-streaming-order-pipeline
-│
+streaming-order-pipeline/
 ├── producer/
-│   └── order_producer.py
-│
+│   └── order_producer.py      # Simulates real-time JSON orders
 ├── consumer/
-│   └── order_consumer.py
-│
-├── airflow/
-│   └── dags/
-│       └── order_aggregation.py
-│
+│   └── order_consumer.py      # Ingests Kafka messages into Postgres (Bronze)
+├── dags/
+│   └── order_aggregation.py   # Airflow DAG orchestrating dbt runs
 ├── dbt_project/
-│   └── models/
-│       └── order_metrics.sql
-│
-├── docker-compose.yml
+│   └── streaming_orders/      # dbt project directory
+│       ├── models/
+│       │   ├── 2_silver/      # Cleaned and typed order data
+│       │   └── 3_gold/        # Aggregated business metrics
+│       └── dbt_project.yml
+├── docker-compose.yml         # Container definitions
 └── README.md
 ```
 
@@ -106,25 +95,24 @@ streaming-order-pipeline
 
 3. **Consumer Service**
 
-   * A Kafka consumer reads the events and inserts them into PostgreSQL.
+   * A Kafka consumer reads events and inserts them into the Bronze table (staging_orders).
 
-4. **Staging Layer**
+4. **Data Transformation**
 
-   * Orders are stored in the `staging_orders` table.
+   * Silver Layer: dbt cleans, casts, and deduplicates raw orders.
+   * Gold Layer: dbt aggregates the Silver data into business metrics.
 
-5. **Data Transformation**
-   * dbt transforms raw data into analytics-ready tables (`order_metrics`).
-
-6. **Workflow Orchestration**
-   * Airflow runs a DAG that updates the analytics table with latest data using `ON CONFLICT` logic.
+5. **Workflow Orchestration**
+   * Airflow triggers the dbt transformations, ensuring the analytics layer is always up to date..
 ---
 
 ## Run the Project
 
-### 1️⃣ Start Infrastructure
+### 1️⃣ Start Infrastructure & Set Permissions
 
 ```bash
-docker compose up -d
+chmod -R 777 ~/streaming-order-pipeline
+docker compose up -d --build
 ```
 
 This starts:
@@ -158,28 +146,17 @@ The consumer:
 
 ---
 
-### 4️⃣ Run dbt (One Time to Create Analytics Table)
+### 4️⃣ Run dbt 
 
 ```bash
-cd dbt_project/streaming_orders
-dbt run
+docker exec -it airflow-scheduler /bin/bash -c "cd /opt/airflow/dbt_project/streaming_orders && /home/airflow/.local/bin/dbt run --profiles-dir /opt/airflow/.dbt"
 ```
 
-This creates the `analytics.order_metrics` table.
+To verify the connection and build the initial Silver/Gold tables, run dbt through the Airflow container:
 
 ---
 
-### 5️⃣ Add Primary Key (One Time)
-
-```bash
-docker exec -it postgres psql -U airflow -d streaming_db -c "ALTER TABLE analytics.order_metrics ADD PRIMARY KEY (order_date);"
-```
-
-This ensures Airflow's `ON CONFLICT` logic works correctly.
-
----
-
-### 6️⃣ Open Airflow
+### 5️⃣ Open Airflow
 
 ```
 http://localhost:8082
@@ -189,25 +166,13 @@ Login with default credentials: `admin` / `admin`
 
 ---
 
-### 7️⃣ Trigger the DAG
+## Example Output (Gold Layer)
 
-Run the DAG:
+Aggregated business metrics from public.order_metrics:
 
-```
-order_aggregation
-```
-
-This updates the analytics table with the latest order data using `ON CONFLICT`.
-
-## Example Output
-
-Daily aggregated metrics:
-
-| order_date | total_orders | revenue   |
-| ---------- | ------------ | --------- |
-| 2026-03-11 | 145          | 15234.50  |
-| 2026-03-10 | 995          | 107435.16 |
-| 2026-03-09 | 396          | 42073.90  |
+| total_orders | total_revenue | avg_order_value | last_updated |
+| ------------ | ------------- | --------------- | ------------ |
+| 281          | 14250.50      | 50.71           | 2026-04-05   |
 
 ---
 
@@ -215,12 +180,10 @@ Daily aggregated metrics:
 
 This project demonstrates practical experience with:
 
-* Building streaming pipelines
-* Working with Kafka producers and consumers
-* Designing staging and analytics layers
-* Orchestrating workflows using Airflow
+* Building end-to-end streaming pipelines.
+* Developing production-style Medallion Architectures.
+* Orchestrating dbt models within an Airflow ecosystem.
 * Transforming data using dbt
-* Managing infrastructure with Docker
 
 ---
 
